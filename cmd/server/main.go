@@ -25,17 +25,15 @@ func main() {
 		log.Fatalf("Error establishing channel: %s", err)
 	}
 	defer ch.Close()
-	fmt.Printf("error: %s", err)
 
 	playState := routing.PlayingState{
 		IsPaused: true,
 	}
-	fmt.Println("------ATTEMPTING TO PUBLISH------")
+
 	err = pubsub.PublishJSON(ch, routing.ExchangePerilDirect, routing.PauseKey, playState)
 	if err != nil {
 		log.Fatalf("Error publishing JSON: %s", err)
 	}
-	fmt.Printf("------PUBLISH SUCCESSFUL------ error: %s", err)
 
 	// accept CTRL+C to end program
 	signalChan := make(chan os.Signal, 1)
