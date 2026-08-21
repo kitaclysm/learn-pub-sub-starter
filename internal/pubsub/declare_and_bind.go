@@ -7,8 +7,8 @@ import (
 type SimpleQueueType string
 
 const (
-	Durable SimpleQueueType = "durable"
-	Transient SimpleQueueType = "transient"
+	SimpleQueueDurable SimpleQueueType = "durable"
+	SimpleQueueTransient SimpleQueueType = "transient"
 )
 
 func DeclareAndBind(
@@ -26,9 +26,9 @@ func DeclareAndBind(
 
 	queue, err := ch.QueueDeclare(
 		queueName,
-		queueType == Durable,
-		queueType == Transient,
-		queueType == Transient,
+		queueType == SimpleQueueDurable,
+		queueType == SimpleQueueTransient,
+		queueType == SimpleQueueTransient,
 		false,
 		nil,
 	)

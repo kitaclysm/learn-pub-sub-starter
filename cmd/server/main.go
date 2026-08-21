@@ -25,6 +25,17 @@ func main() {
 	}
 	defer ch.Close()
 
+	_, _, err = pubsub.DeclareAndBind(
+		connection,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		fmt.Sprintf("%s.*", routing.GameLogSlug),
+		pubsub.SimpleQueueDurable,
+	)
+	if err != nil {
+		log.Fatalf("error binding queue: %s", err)
+	}
+
 	gamelogic.PrintServerHelp()
 
 	for {

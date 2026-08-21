@@ -31,7 +31,7 @@ func main() {
 		routing.ExchangePerilDirect,
 		fmt.Sprintf("%s.%s", routing.PauseKey, username),
 		routing.PauseKey,
-		pubsub.Transient,
+		pubsub.SimpleQueueTransient,
 	)
 	if err != nil {
 		log.Fatalf("Error with declare and bind: %s", err)
