@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
@@ -39,9 +37,36 @@ func main() {
 		log.Fatalf("Error with declare and bind: %s", err)
 	}
 
-	// accept CTRL+C to end program
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-	fmt.Println("Program shutting down.")
+	// create new game state
+	gamestate := gamelogic.NewGameState(username)
+
+	for {
+		command := gamelogic.GetInput()
+		if len(command) == 0 {
+			continue
+		}
+		switch command[0] {
+		case "spawn":
+			err = gamestate.CommandSpawn(command)
+			if err != nil {
+				fmt.Print(err)
+			}
+		case "move":
+			_, err := gamestate.CommandMove(command)
+			if err != nil {
+				fmt.Print(err)
+			}
+		case "status":
+			gamestate.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming not allowed yet!")
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		default:
+			fmt.Print("unknown command")
+		}
+	}
 }
