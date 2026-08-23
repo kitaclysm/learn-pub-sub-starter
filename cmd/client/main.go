@@ -18,6 +18,12 @@ func main() {
 	}
 	defer connection.Close()
 	fmt.Println("Connection successful.")
+	// open channel
+	ch, err := connection.Channel()
+	if err != nil {
+		log.Fatalf("Error establishing channel: %s", err)
+	}
+	defer ch.Close()
 
 	// prompt for username
 	username, err := gamelogic.ClientWelcome()
@@ -28,6 +34,20 @@ func main() {
 	// create new game state
 	gamestate := gamelogic.NewGameState(username)
 
+	// subscribe to player moves
+	err = pubsub.SubscribeJSON(
+		connection,
+		routing.ExchangePerilTopic,
+		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username), // queuename
+		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),            // key
+		pubsub.SimpleQueueTransient,
+		handlerMove(gamestate),
+	)
+	if err != nil {
+		log.Fatalf("Error subscribing to player feed: %s", err)
+	}
+
+	// handle pausing
 	err = pubsub.SubscribeJSON(
 		connection,
 		routing.ExchangePerilDirect,
@@ -52,9 +72,21 @@ func main() {
 				fmt.Print(err)
 			}
 		case "move":
-			_, err := gamestate.CommandMove(command)
+			move, err := gamestate.CommandMove(command)
 			if err != nil {
 				fmt.Print(err)
+			}
+			// publish player moves
+			err = pubsub.PublishJSON(
+				ch,                         // ch *amqp.Channel,
+				routing.ExchangePerilTopic, // exchange,
+				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username), // key string,
+				move, // val T
+			)
+			if err != nil {
+				fmt.Print(err)
+			} else {
+				fmt.Println("Move published successfully.")
 			}
 		case "status":
 			gamestate.CommandStatus()
