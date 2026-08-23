@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
@@ -25,20 +25,20 @@ func main() {
 		log.Fatalf("Error acquiring username: %s", err)
 	}
 
-	// declare and bind
-	_, _, err = pubsub.DeclareAndBind(
+	// create new game state
+	gamestate := gamelogic.NewGameState(username)
+
+	err = pubsub.SubscribeJSON(
 		connection,
 		routing.ExchangePerilDirect,
 		fmt.Sprintf("%s.%s", routing.PauseKey, username),
 		routing.PauseKey,
 		pubsub.SimpleQueueTransient,
+		handlerPause(gamestate),
 	)
 	if err != nil {
-		log.Fatalf("Error with declare and bind: %s", err)
+		log.Fatalf("Error subscribing: %s", err)
 	}
-
-	// create new game state
-	gamestate := gamelogic.NewGameState(username)
 
 	for {
 		command := gamelogic.GetInput()
