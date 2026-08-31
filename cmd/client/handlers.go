@@ -19,7 +19,20 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyM
 		case gamelogic.MoveOutcomeSafe:
 			return pubsub.Ack
 		case gamelogic.MoveOutcomeMakeWar:
-			return pubsub.Ack
+			err := pubsub.PublishJSON(
+				ch,
+				routing.ExchangePerilTopic,
+				routing.WarRecognitionsPrefix+"."+move.Player.Username,
+				gamelogic.RecognitionOfWar{
+					Attacker:	move.Player,
+					Defender:	gs.GetPlayerSnap(),
+				},
+			)
+			if err != nil {
+				log.Printf("error publishing: %v", err)
+				return pubsub.NackDiscard
+			}
+			return pubsub.NackRequeue
 		}
 		fmt.Println("error: unknown move outcome")
 		return pubsub.NackDiscard
