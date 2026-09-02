@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -24,8 +25,8 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyM
 				routing.ExchangePerilTopic,
 				routing.WarRecognitionsPrefix+"."+move.Player.Username,
 				gamelogic.RecognitionOfWar{
-					Attacker:	move.Player,
-					Defender:	gs.GetPlayerSnap(),
+					Attacker: move.Player,
+					Defender: gs.GetPlayerSnap(),
 				},
 			)
 			if err != nil {
