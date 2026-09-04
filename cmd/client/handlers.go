@@ -41,56 +41,47 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyM
 	}
 }
 
-func publishWar(ch *amqp.Channel, gl routing.GameLog) error {
-
+func publishGameLog(ch *amqp.Channel, gl routing.GameLog) error {
+	return pubsub.PublishGob(
+		ch,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug+"."+gl.Username,
+		gl,
+	)
 }
 
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.Acktype {
+func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.RecognitionOfWar) pubsub.Acktype {
 	return func(rw gamelogic.RecognitionOfWar) pubsub.Acktype {
 		defer fmt.Print("> ")
 		outcome, winner, loser := gs.HandleWar(rw)
-		// rw.Attacker, rw.Defender
+		message := ""
 		switch outcome {
 		case gamelogic.WarOutcomeNotInvolved:
 			return pubsub.NackRequeue
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
-			err := gamelogic.WriteLog(routing.GameLog{
-				CurrentTime:	time.Now(),
-				Message:		winner+" won a war against "+loser,
-				Username:		rw.Attacker.Username,
-			})
-			if err != nil {
-				log.Printf("error logging: %v", err)
-				return pubsub.NackDiscard
-			}
-			return pubsub.Ack
+			message = winner+" won a war against "+loser
 		case gamelogic.WarOutcomeYouWon:
-			err := gamelogic.WriteLog(routing.GameLog{
-				CurrentTime:	time.Now(),
-				Message:		winner+" won a war against "+loser,
-				Username:		rw.Attacker.Username,
-			})
-			if err != nil {
-				log.Printf("error logging: %v", err)
-				return pubsub.NackDiscard
-			}
-			return pubsub.Ack
+			message = winner+" won a war against "+loser
 		case gamelogic.WarOutcomeDraw:
-			err := gamelogic.WriteLog(routing.GameLog{
-				CurrentTime:	time.Now(),
-				Message:		"A war between "+winner+" and "+loser+" resulted in a draw",
-				Username:		rw.Attacker.Username,
-			})
-			if err != nil {
-				log.Printf("error logging: %v", err)
-				return pubsub.NackDiscard
-			}
-			return pubsub.Ack
+			message = "A war between "+winner+" and "+loser+" resulted in a draw"
 		default:
 			return pubsub.NackDiscard
 		}
+		err := publishGameLog(
+			ch,
+			routing.GameLog{
+				CurrentTime:	time.Now(),
+				Message:		message,
+				Username:		rw.Attacker.Username,
+			},
+		)
+		if err != nil {
+			log.Printf("error logging: %v", err)
+			return pubsub.NackRequeue
+		}
+		return pubsub.Ack
 	}
 }
 
