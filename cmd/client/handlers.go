@@ -61,20 +61,20 @@ func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.Recogn
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
-			message = winner+" won a war against "+loser
+			message = winner + " won a war against " + loser
 		case gamelogic.WarOutcomeYouWon:
-			message = winner+" won a war against "+loser
+			message = winner + " won a war against " + loser
 		case gamelogic.WarOutcomeDraw:
-			message = "A war between "+winner+" and "+loser+" resulted in a draw"
+			message = "A war between " + winner + " and " + loser + " resulted in a draw"
 		default:
 			return pubsub.NackDiscard
 		}
 		err := publishGameLog(
 			ch,
 			routing.GameLog{
-				CurrentTime:	time.Now(),
-				Message:		message,
-				Username:		rw.Attacker.Username,
+				CurrentTime: time.Now(),
+				Message:     message,
+				Username:    rw.Attacker.Username,
 			},
 		)
 		if err != nil {

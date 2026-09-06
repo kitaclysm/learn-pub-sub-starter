@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 
@@ -22,15 +24,16 @@ const (
 	NackRequeue
 )
 
-func SubscribeJSON[T any](
+func subscribe[T any](
 	conn *amqp.Connection,
 	exchange,
 	queueName,
 	key string,
-	queueType SimpleQueueType,
+	simpleQueueType SimpleQueueType,
 	handler func(T) Acktype,
+	unmarshaller func([]byte) (T, error),
 ) error {
-	ch, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	ch, queue, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
 	if err != nil {
 		return fmt.Errorf("could not declare and bind queue: %v", err)
 	}
@@ -48,12 +51,6 @@ func SubscribeJSON[T any](
 		return fmt.Errorf("could not consume messages: %v", err)
 	}
 
-	unmarshaller := func(data []byte) (T, error) {
-		var target T
-		err := json.Unmarshal(data, &target)
-		return target, err
-	}
-
 	go func() {
 		defer ch.Close()
 		for msg := range msgs {
@@ -65,17 +62,51 @@ func SubscribeJSON[T any](
 			switch handler(target) {
 			case Ack:
 				msg.Ack(false)
-				fmt.Println("Ack")
+				// fmt.Println("Ack")
 			case NackDiscard:
 				msg.Nack(false, false)
-				fmt.Println("NackDiscard")
+				// fmt.Println("NackDiscard")
 			case NackRequeue:
 				msg.Nack(false, true)
-				fmt.Println("NackRequeue")
+				// fmt.Println("NackRequeue")
 			}
 		}
 	}()
 	return nil
+}
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	simpleQueueType SimpleQueueType,
+	handler func(T) Acktype,
+) error {
+	unmarshaller := func(data []byte) (T, error) {
+		var target T
+		r := bytes.NewReader(data)
+		dec := gob.NewDecoder(r)
+		err := dec.Decode(&target)
+		return target, err
+	}
+	return subscribe(conn, exchange, queueName, key, simpleQueueType, handler, unmarshaller)
+}
+
+func SubscribeJSON[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	simpleQueueType SimpleQueueType,
+	handler func(T) Acktype,
+) error {
+	unmarshaller := func(data []byte) (T, error) {
+		var target T
+		err := json.Unmarshal(data, &target)
+		return target, err
+	}
+	return subscribe(conn, exchange, queueName, key, simpleQueueType, handler, unmarshaller)
 }
 
 func DeclareAndBind(
