@@ -25,17 +25,31 @@ func main() {
 		log.Fatalf("could not create channel: %v", err)
 	}
 
-	_, queue, err := pubsub.DeclareAndBind(
+	// conn *amqp.Connection,
+	// exchange,
+	// queueName,
+	// key string,
+	// simpleQueueType SimpleQueueType,
+	// handler func(T) Acktype,
+	err = pubsub.SubscribeGob(
 		conn,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.SimpleQueueDurable,
+		handlerSubGob(),
 	)
+	// _, queue, err := pubsub.DeclareAndBind(
+	// 	conn,
+	// 	routing.ExchangePerilTopic,
+	// 	routing.GameLogSlug,
+	// 	routing.GameLogSlug+".*",
+	// 	pubsub.SimpleQueueDurable,
+	// )
 	if err != nil {
-		log.Fatalf("could not subscribe to pause: %v", err)
+		log.Fatalf("could not subscribe to gob: %v", err)
 	}
-	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
+	// fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
 	gamelogic.PrintServerHelp()
 
